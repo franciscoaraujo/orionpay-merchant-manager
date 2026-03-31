@@ -75,9 +75,18 @@ api.interceptors.response.use(
         request: error.config?.data,
         data: error.response?.data,
       }) as Record<string, unknown>;
+      const status = Number(payload.status || 0);
+      const isCritical = status >= 500 || status === 0;
+
       const hasUsefulInfo = Object.values(payload).some((v) => v !== undefined && v !== null);
+
       if (hasUsefulInfo) {
-        console.error('[API Error]:', payload);
+        if (isCritical) {
+          console.error('[API System Error]:', payload);
+        } else if (status >= 400) {
+          // Logar como warning apenas para manter o desenvolvedor ciente sem "vermelhar" o log
+          console.warn('[API Business Info]:', payload.data || payload);
+        }
       }
     }
 
