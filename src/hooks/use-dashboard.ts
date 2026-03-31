@@ -8,10 +8,10 @@ import { MerchantService, DashboardSummaryResponse } from '../services/merchant-
  * 
  * @param merchantId - ID do lojista (pode ser obtido de um contexto de autenticação)
  */
-export function useDashboardData(merchantId: string) {
+export function useDashboardData(merchantId: string, period?: string) {
   const query = useQuery<DashboardSummaryResponse>({
-    queryKey: ['dashboard-summary', merchantId],
-    queryFn: () => MerchantService.getDashboardSummary(merchantId),
+    queryKey: ['dashboard-summary', merchantId, period],
+    queryFn: () => MerchantService.getDashboardSummary(merchantId, period),
     enabled: !!merchantId,
     refetchInterval: 30_000,
     staleTime: 10_000,
@@ -27,8 +27,8 @@ export function useDashboardData(merchantId: string) {
   };
 }
 
-export function useDashboard(merchantId: string) {
-  return useDashboardData(merchantId);
+export function useDashboard(merchantId: string, period?: string) {
+  return useDashboardData(merchantId, period);
 }
 
 export function useDashboardRevalidator() {

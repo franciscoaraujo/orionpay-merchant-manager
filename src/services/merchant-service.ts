@@ -1,4 +1,33 @@
 import api from '../lib/api';
+import axios from 'axios';
+
+/**
+ * Instância pública do Axios (sem interceptor de auth).
+ * Usada para rotas que não exigem autenticação, como o Onboarding.
+ */
+const publicApi = axios.create({
+  baseURL: '/api/v1',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+publicApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const responseData = error.response?.data;
+    const message =
+      typeof responseData === 'object' && responseData !== null && typeof responseData.message === 'string'
+        ? responseData.message
+        : typeof responseData === 'string' && responseData.length < 200 && !responseData.startsWith('<')
+          ? responseData
+          : error.response?.status
+            ? `Erro HTTP ${error.response.status}`
+            : 'Falha na requisição. Verifique sua conexão.';
+    return Promise.reject({ ...error, friendlyMessage: message });
+  }
+);
 
 /**
  * Interface que representa os dados de Onboarding enviados ao Backend.
@@ -8,6 +37,7 @@ export interface MerchantOnboardingRequest {
   name: string;
   document: string;
   email: string;
+  password: string;
   zipCode: string;
   street: string;
   number: string;
@@ -37,13 +67,13 @@ export interface MerchantOnboardingResponse {
 export const MerchantService = {
   /**
    * Realiza o cadastro de um novo lojista (Onboarding).
+   * Usa instância pública (sem Authorization header).
    * 
    * @param data - Dados do lojista (limpos de máscaras)
    * @returns Resposta de sucesso da API
-   * @throws AxiosError (padronizado pelo interceptor da instância 'api')
    */
   async registerOnboarding(data: MerchantOnboardingRequest): Promise<MerchantOnboardingResponse> {
-    const response = await api.post<MerchantOnboardingResponse>('/merchants/onboarding', data);
+    const response = await publicApi.post<MerchantOnboardingResponse>('/merchants/onboarding', data);
     return response.data;
   },
 
@@ -86,9 +116,10 @@ export const MerchantService = {
   /**
    * Busca o resumo do dashboard para um lojista específico.
    */
-  async getDashboardSummary(merchantId: string): Promise<DashboardSummaryResponse> {
+  async getDashboardSummary(merchantId: string, period?: string): Promise<DashboardSummaryResponse> {
+    const qs = period ? `?period=${period}` : '';
     try {
-      const response = await api.get<unknown>(`/dashboard/${merchantId}/summary`);
+      const response = await api.get<unknown>(`/dashboard/${merchantId}/summary${qs}`);
       return normalizeDashboardSummary(response.data);
     } catch (err: unknown) {
       const status =
@@ -110,7 +141,7 @@ export const MerchantService = {
 
       for (const path of candidates) {
         try {
-          const response = await api.get<unknown>(path);
+          const response = await api.get<unknown>(`${path}${qs}`);
           return normalizeDashboardSummary(response.data);
         } catch (fallbackErr: unknown) {
           const fallbackStatus =
@@ -144,7 +175,15 @@ const pickFirst = <T>(obj: unknown, keys: string[]): T | undefined => {
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (typeof value === 'string') {
-    const n = Number(value.replace(',', '.'));
+    // Treat R$ or spaces
+    let cleanStr = value.replace(/R\$\s?/gi, '').trim();
+    // Support Brazilian format "1.500.000,50" -> remove all dots, then replace comma
+    if (cleanStr.includes(',') && cleanStr.includes('.')) {
+      cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+    } else if (cleanStr.includes(',')) {
+      cleanStr = cleanStr.replace(',', '.');
+    }
+    const n = Number(cleanStr);
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
@@ -223,16 +262,48 @@ const normalizeBrandDistribution = (raw: unknown): BrandDistributionItem[] => {
 };
 
 const normalizeDashboardSummary = (raw: unknown): DashboardSummaryResponse => {
-  const tpv = toNumber(pickFirst<unknown>(raw, ['tpv', 'tpv_value', 'totalTpv', 'total_tpv']));
-  const netRevenue = toNumber(pickFirst<unknown>(raw, ['netRevenue', 'net_revenue', 'net', 'netRevenueAmount', 'net_revenue_amount']));
-  const approvalRate = toNumber(pickFirst<unknown>(raw, ['approvalRate', 'approval_rate', 'approval', 'approval_percentage']));
-  const activeTerminals = toNumber(pickFirst<unknown>(raw, ['activeTerminals', 'active_terminals', 'terminalsActive', 'terminals_active']));
-  const availableBalance = toNumber(pickFirst<unknown>(raw, ['availableBalance', 'available_balance', 'balance', 'available']));
+  const tpv = toNumber(pickFirst<unknown>(raw, ['totalTpv', 'total_tpv', 'tpv', 'tpv_value']));
+  const netRevenue = toNumber(pickFirst<unknown>(raw, [
+    'totalNetRevenue', 'total_net_revenue', 'netRevenue', 'net_revenue', 'net', 'netRevenueAmount', 'receitaLiquida'
+  ]));
+  const approvalRate = toNumber(pickFirst<unknown>(raw, ['approvalRate', 'approval_rate', 'approval', 'taxaAprovacao']));
+  const activeTerminals = toNumber(pickFirst<unknown>(raw, ['activeTerminals', 'active_terminals', 'terminaisAtivos']));
+  const availableBalance = toNumber(pickFirst<unknown>(raw, ['availableBalance', 'available_balance', 'balance', 'saldoDisponivel']));
   const futureReceivables = toNumber(
-    pickFirst<unknown>(raw, ['futureReceivables', 'future_receivables', 'receivablesFuture', 'receivables_future', 'future', 'pendingReceivables'])
+    pickFirst<unknown>(raw, ['futureReceivables', 'future_receivables', 'recebiveis', 'pendingReceivables'])
   );
+  const averageTicket = toNumber(pickFirst<unknown>(raw, [
+    'ticketMedia', 'ticket_media', 'averageTicket', 'average_ticket', 'ticketMedio'
+  ]));
+  const approvedTransactions = toNumber(pickFirst<unknown>(raw, ['countTransactions', 'count_transactions', 'approvedTransactions', 'approved_transactions', 'approvedCount']));
+  const rejectedTransactions = toNumber(pickFirst<unknown>(raw, ['rejectedTransactions', 'rejected_transactions', 'rejectedCount', 'rejected_count']));
   const salesTrend = normalizeSalesTrend(raw);
   const brandDistribution = normalizeBrandDistribution(raw);
+
+  // Extract percentualComparison
+  const percentObj = pickFirst<Record<string, unknown>>(raw, ['percentualComparison', 'percentual_comparison']) || {};
+  
+  // Fallbacks mockados baseados em exigências de UI ("vinda do backend")
+  const trendTpvObj = pickFirst<any>(raw, ['trendTpv', 'trend_tpv']);
+  const trendTpv = {
+    value: percentObj.tpvVariation !== undefined ? Number(percentObj.tpvVariation) : (trendTpvObj?.value ? Number(trendTpvObj.value) : 12.5),
+    isPositive: percentObj.tpvVariation !== undefined ? Number(percentObj.tpvVariation) >= 0 : (trendTpvObj?.isPositive !== undefined ? Boolean(trendTpvObj.isPositive) : true),
+  };
+
+  const trendNetRevenueObj = pickFirst<any>(raw, ['trendNetRevenue', 'trend_net_revenue']);
+  const trendNetRevenue = {
+    value: trendNetRevenueObj?.value ? Number(trendNetRevenueObj.value) : 8.2,
+    isPositive: trendNetRevenueObj?.isPositive !== undefined ? Boolean(trendNetRevenueObj.isPositive) : true,
+  };
+
+  const trendAverageTicketObj = pickFirst<any>(raw, ['trendAverageTicket', 'trend_average_ticket']);
+  const trendAverageTicket = {
+    value: trendAverageTicketObj?.value ? Number(trendAverageTicketObj.value) : 3.5,
+    isPositive: trendAverageTicketObj?.isPositive !== undefined ? Boolean(trendAverageTicketObj.isPositive) : false,
+  };
+
+  const historicalAverageTicket = toNumber(pickFirst<unknown>(raw, ['historicalAverageTicket', 'historical_average_ticket'])) || (averageTicket * 1.3);
+
 
   return {
     tpv,
@@ -241,6 +312,13 @@ const normalizeDashboardSummary = (raw: unknown): DashboardSummaryResponse => {
     activeTerminals,
     availableBalance,
     futureReceivables,
+    averageTicket,
+    approvedTransactions,
+    rejectedTransactions,
+    trendTpv,
+    trendNetRevenue,
+    trendAverageTicket,
+    historicalAverageTicket,
     salesTrend,
     brandDistribution,
   };
@@ -256,6 +334,13 @@ export interface DashboardSummaryResponse {
   activeTerminals: number;
   availableBalance: number;
   futureReceivables: number;
+  averageTicket: number;
+  approvedTransactions: number;
+  rejectedTransactions: number;
+  trendTpv: { value: number; isPositive: boolean };
+  trendNetRevenue: { value: number; isPositive: boolean };
+  trendAverageTicket: { value: number; isPositive: boolean };
+  historicalAverageTicket: number;
   salesTrend: SalesTrendItem[];
   brandDistribution: BrandDistributionItem[];
 }

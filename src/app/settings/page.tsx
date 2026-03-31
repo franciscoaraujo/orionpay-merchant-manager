@@ -679,7 +679,7 @@ export default function SettingsPage() {
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Categoria</label>
                           <Select 
-                            value={supportForm.category} 
+                            value={supportForm.category || undefined} 
                             onValueChange={(val) => setSupportForm({ ...supportForm, category: val })}
                             required
                           >

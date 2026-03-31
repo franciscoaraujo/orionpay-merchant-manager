@@ -185,7 +185,7 @@ api.interceptors.response.use(
     const urlLabel = typeof error.config?.url === 'string' ? error.config.url : null;
     const networkLabel = typeof error.message === 'string' && error.message.trim() ? error.message.trim() : null;
 
-    const message =
+    let message =
       responseMessage ??
       (responseText && !responseText.toLowerCase().startsWith('<!doctype') && !responseText.toLowerCase().startsWith('<html')
         ? responseText
@@ -195,6 +195,10 @@ api.interceptors.response.use(
       (networkLabel ? `Falha na requisição: ${networkLabel}` : null) ??
       'Ocorreu um erro inesperado. Tente novamente.';
     
+    if (error.response?.status && error.response.status >= 500) {
+      message = 'Estamos enfrentando uma instabilidade temporária. Por favor, tente novamente em instantes.';
+    }
+
     const apiError = {
       ...error,
       friendlyMessage: message,

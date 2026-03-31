@@ -198,7 +198,7 @@ function LoginPageContent() {
           {/* Signup Link */}
           <div className="mt-8 text-center">
             <p className="text-sm font-medium text-gray-500">
-              Não tem uma conta? <span className="text-[#0A2540] font-bold cursor-pointer hover:underline">Cadastre-se</span>
+              Não tem uma conta? <span onClick={() => router.push('/register')} className="text-[#0A2540] font-bold cursor-pointer hover:underline">Cadastre-se</span>
             </p>
           </div>
 

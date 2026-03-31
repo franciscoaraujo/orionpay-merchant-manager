@@ -7,7 +7,7 @@ import { AuthService } from '@/services/auth-service';
 import { MerchantService } from '@/services/merchant-service';
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const merchantId = AuthService.getMerchantId() ?? process.env.NEXT_PUBLIC_TEST_MERCHANT_ID ?? '';
+  const merchantId = AuthService.getMerchantId() ?? '';
   useTransactionRealtimeNotifications(merchantId);
 
   const [merchantName, setMerchantName] = useState<string>(() => AuthService.getMerchantName() ?? '');

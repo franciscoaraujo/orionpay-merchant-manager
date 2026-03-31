@@ -10,8 +10,11 @@ import {
   Wallet,
   Unlock,
   Activity,
+  Tag,
+  AlertTriangle,
 } from 'lucide-react';
 import { AnimatePresence, animate, motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { useDashboardData } from '@/hooks/use-dashboard';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { SalesChart } from '@/components/dashboard/SalesChart';
@@ -22,8 +25,8 @@ import { AuthService } from '@/services/auth-service';
 export default function DashboardPage() {
   const initialMerchantId =
     typeof window === 'undefined'
-      ? process.env.NEXT_PUBLIC_TEST_MERCHANT_ID ?? ''
-      : AuthService.getMerchantId() ?? process.env.NEXT_PUBLIC_TEST_MERCHANT_ID ?? '';
+      ? ''
+      : AuthService.getMerchantId() ?? '';
 
   const [merchantId, setMerchantId] = useState(initialMerchantId);
   const [merchantIdResolved, setMerchantIdResolved] = useState(() => {
@@ -67,7 +70,9 @@ export default function DashboardPage() {
       .finally(() => setMerchantIdResolved(true));
   }, [merchantIdResolved]);
 
-  const { data, isLoading, isError, isFetching, error } = useDashboardData(merchantId);
+  const [period, setPeriod] = useState('month');
+
+  const { data, isLoading, isError, isFetching, error } = useDashboardData(merchantId, period);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
@@ -144,23 +149,6 @@ export default function DashboardPage() {
       typeof (error as { friendlyMessage?: unknown }).friendlyMessage === 'string'
         ? (error as { friendlyMessage: string }).friendlyMessage
         : 'Erro desconhecido';
-    const errorStatus =
-      typeof error === 'object' &&
-      error !== null &&
-      'response' in error &&
-      typeof (error as { response?: unknown }).response === 'object' &&
-      (error as { response?: { status?: unknown } }).response?.status !== undefined
-        ? String((error as { response: { status: number } }).response.status)
-        : null;
-    const errorUrl =
-      typeof error === 'object' &&
-      error !== null &&
-      'config' in error &&
-      typeof (error as { config?: unknown }).config === 'object' &&
-      (error as { config?: { url?: unknown } }).config?.url &&
-      typeof (error as { config: { url: unknown } }).config.url === 'string'
-        ? (error as { config: { url: string } }).config.url
-        : null;
     return (
       <MainLayout>
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -170,10 +158,8 @@ export default function DashboardPage() {
           <h2 className="text-xl font-bold text-slate-900">Erro ao carregar dashboard</h2>
           <p className="text-slate-500">Não foi possível carregar os dados do dashboard.</p>
           <div className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
-            {errorStatus ? `HTTP ${errorStatus}: ` : ''}
             {errorMessage}
           </div>
-          {errorUrl && <div className="text-[11px] font-medium text-slate-400">Endpoint: {errorUrl}</div>}
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
@@ -185,10 +171,46 @@ export default function DashboardPage() {
     );
   }
 
+  const periodOptions = [
+    { value: 'today', label: 'Hoje' },
+    { value: 'yesterday', label: 'Ontem' },
+    { value: 'month', label: 'Mês Atual' },
+    { value: 'last_30_days', label: 'Últimos 30 dias' },
+  ];
+
+  const periodDescription = 
+    period === 'today' ? 'Hoje' :
+    period === 'yesterday' ? 'Ontem' :
+    period === 'last_30_days' ? 'Últimos 30 dias' :
+    'Acumulado do Mês';
+
   return (
     <MainLayout>
       <div className="space-y-8 animate-in fade-in duration-700">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Visão Geral</h1>
+            <p className="text-sm text-slate-500">Acompanhe seus resultados e compare os períodos</p>
+          </div>
+          <div className="flex items-center bg-white border border-gray-200 p-1 rounded-xl shadow-sm overflow-x-auto w-full sm:w-auto">
+            {periodOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={cn(
+                  "px-4 py-2 text-xs font-bold rounded-lg transition-all duration-200 whitespace-nowrap",
+                  period === opt.value
+                    ? "bg-slate-900 text-white shadow-md"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           <KPICard
             title="Saldo Disponível"
             value={
@@ -260,21 +282,60 @@ export default function DashboardPage() {
               </AnimatePresence>
             }
             icon={DollarSign}
-            trend={{ value: 12.5, isPositive: true }}
+            description={periodDescription}
+            trend={data?.trendTpv}
             isLoading={isLoading}
           />
           <KPICard
             title="Receita Líquida"
             value={isLoading ? '...' : formatCurrency(data?.netRevenue || 0)}
             icon={Percent}
-            trend={{ value: 8.2, isPositive: true }}
+            description={periodDescription}
+            infoTooltip="Receita real já descontando taxas"
+            trend={data?.trendNetRevenue}
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Ticket Médio"
+            value={isLoading ? '...' : formatCurrency(data?.averageTicket || 0)}
+            icon={Tag}
+            description={periodDescription}
+            infoTooltip="Valor médio de cada venda aprovada"
+            trend={data?.trendAverageTicket}
+            containerClassName={
+              (data?.averageTicket || 0) > 0 && (data?.averageTicket || 0) <= (data?.historicalAverageTicket || 0) * 0.8
+                ? "border-red-200 bg-red-50/20"
+                : undefined
+            }
+            action={
+              (data?.averageTicket || 0) > 0 && (data?.averageTicket || 0) <= (data?.historicalAverageTicket || 0) * 0.8 ? (
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className={cn(
+                    "text-xs font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800"
+                  )}>
+                    -{data?.trendAverageTicket?.value}%
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] bg-red-100 text-red-700 px-2 py-1 rounded-full font-bold animate-pulse">
+                    <AlertTriangle size={10} />
+                     Queda atípica
+                  </div>
+                </div>
+              ) : undefined
+            }
             isLoading={isLoading}
           />
           <KPICard
             title="Taxa de Aprovação"
             value={isLoading ? '...' : `${data?.approvalRate || 0}%`}
-            icon={TrendingUp}
-            trend={{ value: 2.1, isPositive: true }}
+            icon={(data?.approvalRate ?? 100) < 80 ? AlertTriangle : TrendingUp}
+            iconClassName={(data?.approvalRate ?? 100) < 80 ? "text-amber-500" : undefined}
+            iconContainerClassName={(data?.approvalRate ?? 100) < 80 ? "bg-amber-50" : undefined}
+            description={periodDescription}
+            trend={
+              (data?.approvalRate ?? 100) < 80 
+                ? undefined
+                : { value: 2.1, isPositive: true }
+            }
             isLoading={isLoading}
           />
         </div>
@@ -297,7 +358,11 @@ export default function DashboardPage() {
               <h4 className="font-bold tracking-tight">Terminais Ativos</h4>
               <p className="text-3xl font-bold">{isLoading ? '...' : data?.activeTerminals}</p>
             </div>
-            <p className="text-xs text-white/50 font-medium">Todos os seus POS estão operacionais e transmitindo dados.</p>
+            {data?.activeTerminals === 0 ? (
+              <p className="text-xs text-amber-300 font-bold max-w-[200px]">Nenhum terminal operando no momento.</p>
+            ) : (
+              <p className="text-xs text-white/50 font-medium max-w-[200px]">Todos os seus POS estão operacionais e transmitindo dados.</p>
+            )}
           </div>
 
           <div className="md:col-span-2 bg-white border border-gray-100 p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">

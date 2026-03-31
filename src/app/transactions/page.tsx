@@ -10,8 +10,8 @@ import { AuthService } from '@/services/auth-service';
 export default function TransactionsPage() {
   const initialMerchantId =
     typeof window === 'undefined'
-      ? process.env.NEXT_PUBLIC_TEST_MERCHANT_ID ?? ''
-      : AuthService.getMerchantId() ?? process.env.NEXT_PUBLIC_TEST_MERCHANT_ID ?? '';
+      ? ''
+      : AuthService.getMerchantId() ?? '';
 
   const [merchantId, setMerchantId] = useState(initialMerchantId);
   const [merchantIdResolved, setMerchantIdResolved] = useState(() => {

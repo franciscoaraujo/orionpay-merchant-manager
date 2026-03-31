@@ -19,6 +19,11 @@ export const onboardingSchema = z.object({
     .transform(v => v.replace(/\D/g, ''))
     .refine(v => v.length === 11 || v.length === 14, 'Documento inválido (deve ter 11 ou 14 dígitos)'),
   email: z.string().email('E-mail inválido'),
+  password: z.string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .refine(v => /[A-Za-z]/.test(v), 'Senha deve conter pelo menos uma letra')
+    .refine(v => /\d/.test(v), 'Senha deve conter pelo menos um número')
+    .refine(v => /[^A-Za-z0-9]/.test(v), 'Senha deve conter pelo menos um caractere especial (!@#$...)'),
   // Endereço
   zipCode: z.string()
     .transform(v => v.replace(/\D/g, ''))
@@ -62,7 +67,7 @@ export function useMerchantOnboarding() {
     let fieldsToValidate: (keyof OnboardingData)[] = [];
     
     if (currentStep === 1) {
-      fieldsToValidate = ['name', 'document', 'email'];
+      fieldsToValidate = ['name', 'document', 'email', 'password'];
     } else if (currentStep === 2) {
       fieldsToValidate = ['zipCode', 'street', 'number', 'neighborhood', 'city', 'state'];
     }

@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ShieldCheck, 
-  Building2, 
-  MapPin, 
-  CreditCard, 
-  ArrowRight, 
+import {
+  ShieldCheck,
+  Building2,
+  MapPin,
+  CreditCard,
+  ArrowRight,
   ArrowLeft,
   Check,
   ChevronRight,
@@ -25,7 +25,7 @@ const steps = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  
+
   // Utiliza o Hook Customizado (Enterprise Pattern)
   const {
     form,
@@ -37,7 +37,8 @@ export default function RegisterPage() {
     errors
   } = useMerchantOnboarding();
 
-  const { register } = form;
+  const { register, watch } = form;
+  const passwordValue = watch('password') ?? '';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center py-12 px-4 font-sans">
@@ -59,11 +60,11 @@ export default function RegisterPage() {
         {/* Stepper UI */}
         <div className="relative flex justify-between items-center px-4">
           <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2 z-0" />
-          <div 
-            className="absolute top-1/2 left-0 h-0.5 bg-[#0A2540] transition-all duration-500 z-0" 
+          <div
+            className="absolute top-1/2 left-0 h-0.5 bg-[#0A2540] transition-all duration-500 z-0"
             style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
           />
-          
+
           {steps.map((step) => {
             const Icon = step.icon;
             const isCompleted = currentStep > step.id;
@@ -71,12 +72,12 @@ export default function RegisterPage() {
 
             return (
               <div key={step.id} className="relative z-10 flex flex-col items-center">
-                <div 
+                <div
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300",
-                    isCompleted ? "bg-[#0A2540] border-[#0A2540] text-white" : 
-                    isActive ? "bg-white border-[#0A2540] text-[#0A2540]" : 
-                    "bg-white border-gray-200 text-gray-400"
+                    isCompleted ? "bg-[#0A2540] border-[#0A2540] text-white" :
+                      isActive ? "bg-white border-[#0A2540] text-[#0A2540]" :
+                        "bg-white border-gray-200 text-gray-400"
                   )}
                 >
                   {isCompleted ? <Check size={20} /> : <Icon size={20} />}
@@ -95,7 +96,7 @@ export default function RegisterPage() {
         {/* Form Card */}
         <div className="bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-xl shadow-gray-200/50">
           <form onSubmit={onSubmit} className="space-y-8">
-            
+
             {/* Step 1: Dados do Negócio */}
             {currentStep === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -103,11 +104,11 @@ export default function RegisterPage() {
                   <h2 className="text-xl font-bold text-[#0A2540]">Dados do Negócio</h2>
                   <p className="text-sm text-gray-400">Comece inserindo as informações principais da sua empresa.</p>
                 </div>
-                
+
                 <div className="grid gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Nome / Razão Social</label>
-                    <input 
+                    <input
                       {...register('name')}
                       placeholder="Ex: Orion Enterprise Ltda"
                       className={cn(
@@ -120,7 +121,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">CNPJ / CPF</label>
-                    <input 
+                    <input
                       {...register('document')}
                       placeholder="000.000.000-00"
                       maxLength={18}
@@ -134,7 +135,7 @@ export default function RegisterPage() {
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">E-mail</label>
-                    <input 
+                    <input
                       {...register('email')}
                       type="email"
                       placeholder="contato@empresa.com.br"
@@ -144,6 +145,51 @@ export default function RegisterPage() {
                       )}
                     />
                     {errors.email && <span className="text-[10px] text-red-500 font-bold ml-1">{errors.email.message}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Senha</label>
+                    <input
+                      {...register('password')}
+                      type="password"
+                      placeholder="Crie uma senha segura"
+                      className={cn(
+                        "w-full bg-white border rounded-xl py-3 px-4 text-[#0A2540] text-sm focus:outline-none focus:ring-1 transition-all",
+                        errors.password ? "border-red-500 focus:ring-red-500/50" : "border-gray-200 focus:ring-[#0A2540]/50 focus:border-[#0A2540]"
+                      )}
+                    />
+                    {errors.password && <span className="text-[10px] text-red-500 font-bold ml-1">{errors.password.message}</span>}
+                    {(() => {
+                      const rules = [
+                        { label: 'Mínimo 8 caracteres', valid: passwordValue.length >= 8 },
+                        { label: 'Pelo menos uma letra (a-z)', valid: /[A-Za-z]/.test(passwordValue) },
+                        { label: 'Pelo menos um número (0-9)', valid: /\d/.test(passwordValue) },
+                        { label: 'Pelo menos um caractere especial (!@#$...)', valid: /[^A-Za-z0-9]/.test(passwordValue) },
+                        { label: 'Não use apenas números', valid: passwordValue.length === 0 || /[^0-9]/.test(passwordValue) },
+                      ];
+                      return (
+                        <div className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 mt-1">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Requisitos da senha</p>
+                          <ul className="space-y-0.5">
+                            {rules.map((rule) => (
+                              <li
+                                key={rule.label}
+                                className={cn(
+                                  "text-[11px] flex items-center gap-1.5 transition-colors duration-200",
+                                  rule.valid ? "text-[#0A2540]" : "text-red-400 font-semibold"
+                                )}
+                              >
+                                <span className={cn(
+                                  "w-1.5 h-1.5 rounded-full inline-block transition-colors duration-200",
+                                  rule.valid ? "bg-emerald-500" : "bg-red-400"
+                                )} />
+                                {rule.label}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -156,11 +202,11 @@ export default function RegisterPage() {
                   <h2 className="text-xl font-bold text-[#0A2540]">Endereço</h2>
                   <p className="text-sm text-gray-400">Onde sua empresa está localizada?</p>
                 </div>
-                
+
                 <div className="grid grid-cols-6 gap-4">
                   <div className="col-span-6 md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">CEP</label>
-                    <input 
+                    <input
                       {...register('zipCode')}
                       placeholder="00000-000"
                       maxLength={9}
@@ -174,7 +220,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-6 md:col-span-4 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Logradouro</label>
-                    <input 
+                    <input
                       {...register('street')}
                       placeholder="Rua, Avenida..."
                       className={cn(
@@ -186,7 +232,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-3 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Número</label>
-                    <input 
+                    <input
                       {...register('number')}
                       placeholder="123"
                       className={cn(
@@ -198,7 +244,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-3 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Complemento</label>
-                    <input 
+                    <input
                       {...register('complement')}
                       placeholder="Sala, Apto..."
                       className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 text-[#0A2540] text-sm focus:outline-none focus:ring-1 focus:ring-[#0A2540]/50 focus:border-[#0A2540] transition-all"
@@ -207,7 +253,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-6 md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Bairro</label>
-                    <input 
+                    <input
                       {...register('neighborhood')}
                       placeholder="Bairro"
                       className={cn(
@@ -219,7 +265,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-4 md:col-span-3 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Cidade</label>
-                    <input 
+                    <input
                       {...register('city')}
                       placeholder="Cidade"
                       className={cn(
@@ -231,7 +277,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-2 md:col-span-1 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">UF</label>
-                    <input 
+                    <input
                       {...register('state')}
                       placeholder="SP"
                       maxLength={2}
@@ -252,11 +298,11 @@ export default function RegisterPage() {
                   <h2 className="text-xl font-bold text-[#0A2540]">Domicílio Bancário</h2>
                   <p className="text-sm text-gray-400">Onde você deseja receber seus pagamentos?</p>
                 </div>
-                
+
                 <div className="grid grid-cols-4 gap-4">
                   <div className="col-span-4 md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Código do Banco</label>
-                    <input 
+                    <input
                       {...register('bankCode')}
                       placeholder="001, 237, 341..."
                       className={cn(
@@ -269,7 +315,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-4 md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Tipo de Conta</label>
-                    <select 
+                    <select
                       {...register('accountType')}
                       className="w-full bg-white border border-gray-200 rounded-xl py-3 px-4 text-[#0A2540] text-sm focus:outline-none focus:ring-1 focus:ring-[#0A2540]/50 focus:border-[#0A2540] transition-all appearance-none cursor-pointer"
                     >
@@ -280,7 +326,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-2 md:col-span-1 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Agência</label>
-                    <input 
+                    <input
                       {...register('branch')}
                       placeholder="0001"
                       className={cn(
@@ -292,7 +338,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-2 md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Conta</label>
-                    <input 
+                    <input
                       {...register('account')}
                       placeholder="123456"
                       className={cn(
@@ -304,7 +350,7 @@ export default function RegisterPage() {
 
                   <div className="col-span-4 md:col-span-1 space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Dígito</label>
-                    <input 
+                    <input
                       {...register('accountDigit')}
                       placeholder="0"
                       maxLength={1}
@@ -328,7 +374,7 @@ export default function RegisterPage() {
             {/* Navigation Buttons */}
             <div className="flex gap-4 pt-4">
               {currentStep > 1 && (
-                <button 
+                <button
                   type="button"
                   onClick={prevStep}
                   className="flex-1 px-6 py-4 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors text-sm font-bold text-gray-500 flex items-center justify-center gap-2"
@@ -337,9 +383,9 @@ export default function RegisterPage() {
                   Anterior
                 </button>
               )}
-              
+
               {currentStep < 3 ? (
-                <button 
+                <button
                   type="button"
                   onClick={nextStep}
                   className="flex-1 bg-[#0A2540] text-white rounded-2xl py-4 font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A2540]/20"
@@ -348,7 +394,7 @@ export default function RegisterPage() {
                   <ArrowRight size={18} />
                 </button>
               ) : (
-                <button 
+                <button
                   type="submit"
                   disabled={isLoading}
                   className="flex-1 bg-[#0A2540] text-white rounded-2xl py-4 font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A2540]/20 disabled:opacity-50"

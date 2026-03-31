@@ -42,7 +42,9 @@ export function SalesChart({ data, isLoading }: SalesChartProps) {
     );
   }
 
-  if (!data || data.length === 0) {
+  const isAllZero = data && data.length > 0 && data.every(d => (d.today || 0) === 0 && (d.yesterday || 0) === 0);
+
+  if (!data || data.length === 0 || isAllZero) {
     return (
       <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm h-[400px]">
         <div className="flex justify-between items-center mb-8">
@@ -54,7 +56,7 @@ export function SalesChart({ data, isLoading }: SalesChartProps) {
         <div className="h-[280px] w-full flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100">
           <div className="text-center space-y-1">
             <div className="text-sm font-bold text-slate-700">Sem dados para exibir</div>
-            <div className="text-xs font-medium text-slate-400">Aguardando retorno do backend</div>
+            <div className="text-xs font-medium text-slate-400">Nenhuma venda registrada até o momento</div>
           </div>
         </div>
       </div>

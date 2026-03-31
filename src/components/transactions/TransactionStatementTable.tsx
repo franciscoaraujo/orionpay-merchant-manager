@@ -7,6 +7,7 @@ import { ArrowUpDown, CheckCircle2, ChevronDown, ChevronUp, Clock, Copy, Eye, Fi
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionService } from '@/services/transaction-service';
+import { AuthService } from '@/services/auth-service';
 import type { TransactionStatementItem } from '@/services/transaction-service';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -238,7 +239,7 @@ function TransactionRowActions({ tx }: { tx: TransactionStatementItem }) {
 
   const prettyJson = useMemo(() => JSON.stringify(tx, null, 2), [tx]);
 
-  const merchantId = process.env.NEXT_PUBLIC_TEST_MERCHANT_ID || '';
+  const merchantId = AuthService.getMerchantId() ?? '';
   const normalizedEmail = email.trim();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
